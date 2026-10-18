@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Volpam QuickSwitch • MK-083</title>
+  <meta name="theme-color" content="#0d1117">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Instant 2-button speed limiter switcher for Volpam MK-083 / Vincet e-scooters via Web Bluetooth.">
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card-bg: rgba(22, 27, 34, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-unlimit: #f59e0b;
+      --accent-unlimit-glow: rgba(245, 158, 11, 0.35);
+      --accent-unlimit-bg: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+      --accent-limit: #10b981;
+      --accent-limit-glow: rgba(16, 185, 129, 0.35);
+      --accent-limit-bg: linear-gradient(135deg, #059669 0%, #047857 100%);
+      --accent-cyan: #06b6d4;
+      --danger: #ef4444;
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.08) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(6, 182, 212, 0.06) 0px, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+      padding-bottom: 130px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+    }
+
+    .brand-text h1 {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      font-size: 11px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+
+    .status-dot.connected {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connecting {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.9); }
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Card styling */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 18px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Connect Section */
+    .connect-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn-connect {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+      transition: all 0.2s;
+    }
+
+    .btn-connect:active {
+      transform: scale(0.98);
+      filter: brightness(1.1);
+    }
+
+    .btn-connect.connected {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      box-shadow: none;
+    }
+
+    .device-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+
+    .device-info span strong {
+      color: var(--text);
+    }
+
+    /* THE TWO SPEED SWITCH BUTTONS */
+    .switch-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .speed-btn {
+      position: relative;
+      border: none;
+      border-radius: 20px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    .speed-btn:active {
+      transform: scale(0.97);
+    }
+
+    .speed-btn.unlimit {
+      background: linear-gradient(135deg, #1e1b18 0%, #291e0e 100%);
+      border: 2px solid #f59e0b;
+    }
+
+    .speed-btn.unlimit::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 100%;
+      background: radial-gradient(circle at 100% 0%, rgba(245, 158, 11, 0.25) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .speed-btn.unlimit:hover {
+      box-shadow: 0 12px 30px var(--accent-unlimit-glow);
+    }
+
+    .speed-btn.limit {
+      background: linear-gradient(135deg, #0d1e18 0%, #0e2920 100%);
+      border: 2px solid #10b981;
+    }
+
+    .speed-btn.limit::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 100%;
+      background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.25) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .speed-btn.limit:hover {
+      box-shadow: 0 12px 30px var(--accent-limit-glow);
+    }
+
+    .speed-btn-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+
+    .speed-btn-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .speed-btn.unlimit .speed-btn-label { color: #fbbf24; }
+    .speed-btn.limit .speed-btn-label { color: #34d399; }
+
+    .speed-btn-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .speed-btn-big {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .speed-btn-big .unit {
+      font-size: 16px;
+      font-weight: 600;
+      opacity: 0.7;
+    }
+
+    .speed-btn-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Live Telemetry Card */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .tele-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tele-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .tele-value {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .tele-value small {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    /* Controls Row */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .ctrl-btn:active {
+      transform: scale(0.95);
+    }
+
+    .ctrl-btn.active {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: #06b6d4;
+      color: #67e8f9;
+    }
+
+    .ctrl-btn.locked {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+
+    .ctrl-icon {
+      font-size: 18px;
+    }
+
+    /* Custom Speed Detents */
+    .custom-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .presets-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .preset-pill {
+      flex: 1;
+      min-width: 50px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+
+    .preset-pill:active, .preset-pill:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: var(--accent-cyan);
+    }
+
+    /* Log Console */
+    .log-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .log-box {
+      background: #05080c;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      height: 120px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      color: #94a3b8;
+    }
+
+    .log-entry {
+      word-break: break-all;
+    }
+
+    .log-tx { color: #38bdf8; }
+    .log-rx { color: #4ade80; }
+    .log-warn { color: #facc15; }
+    .log-err { color: #f87171; }
+    .log-ack { color: #c084fc; font-weight: bold; }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: white;
+      padding: 12px 22px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+      opacity: 0;
+      z-index: 999;
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .demo-banner {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px dashed rgba(245, 158, 11, 0.5);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #fbbf24;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .demo-toggle {
+      background: #f59e0b;
+      color: #0b0f17;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-text">
+        <h1>Volpam QuickSwitch</h1>
+        <p>MK-083 • PRO-VC (36V)</p>
+      </div>
+    </div>
+    <div class="status-badge" id="statusBadge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Offline</span>
+    </div>
+  </header>
+
+  <!-- Demo Simulator Banner (optional for offline testing) -->
+  <div class="demo-banner" id="demoBanner">
+    <span>💡 <strong>Demo Mode:</strong> Test buttons & packets without scooter</span>
+    <button class="demo-toggle" id="demoToggleBtn" onclick="toggleDemoMode()">Enable Demo</button>
+  </div>
+
+  <!-- Connection Card -->
+  <div class="card connect-card">
+    <button class="btn-connect" id="btnConnect" onclick="handleConnectClick()">
+      <span id="connectIcon">🔗</span>
+      <span id="connectLabel">Connect Scooter</span>
+    </button>
+    <div class="device-info">
+      <span>Device: <strong id="infoDeviceName">MK-083 (Not paired)</strong></span>
+      <span>Speed Limit: <strong id="infoActiveLimit">— km/h</strong></span>
+    </div>
+  </div>
+
+  <!-- THE TWO HERO BUTTONS: UNLIMIT TO 47 & LIMIT TO 20 -->
+  <div class="switch-grid">
+    <!-- Button 1: Unlimit to 47 -->
+    <button class="speed-btn unlimit" onclick="applySpeedSetting(47, 'unlimit')">
+      <div class="speed-btn-top">
+        <span class="speed-btn-label">🚀 Fast Track / Sport</span>
+        <span class="speed-btn-pill">P10 + 0x3C</span>
+      </div>
+      <div class="speed-btn-big">
+        47 <span class="unit">KM/H</span>
+      </div>
+      <div class="speed-btn-desc">
+        Full throttle unlimit • Removes 20 km/h ceiling
+      </div>
+    </button>
+
+    <!-- Button 2: Limit to 20 -->
+    <button class="speed-btn limit" onclick="applySpeedSetting(20, 'limit')">
+      <div class="speed-btn-top">
+        <span class="speed-btn-label">🛡️ Commute / Street Legal</span>
+        <span class="speed-btn-pill">P10 + 0x3C</span>
+      </div>
+      <div class="speed-btn-big">
+        20 <span class="unit">KM/H</span>
+      </div>
+      <div class="speed-btn-desc">
+        Strict 20 km/h governor • Maximum battery range
+      </div>
+    </button>
+  </div>
+
+  <!-- Live Dashboard Telemetry -->
+  <div class="card">
+    <div class="section-title" style="margin-bottom: 12px;">
+      <span>Live Dashboard</span>
+      <span id="firmwareLabel" style="font-size: 10px; opacity: 0.7;">FW: —</span>
+    </div>
+    <div class="dashboard-grid">
+      <div class="tele-item">
+        <div class="tele-label">Current Speed</div>
+        <div class="tele-value" id="valSpeed">0.0 <small>km/h</small></div>
+      </div>
+      <div class="tele-item">
+        <div class="tele-label">Battery Level</div>
+        <div class="tele-value" id="valBattery">-- <small>%</small></div>
+      </div>
+      <div class="tele-item">
+        <div class="tele-label">Voltage</div>
+        <div class="tele-value" id="valVoltage">--.- <small>V</small></div>
+      </div>
+      <div class="tele-item">
+        <div class="tele-label">Motor Temp</div>
+        <div class="tele-value" id="valTemp">-- <small>°C</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Scooter Controls -->
+  <div class="card">
+    <div class="section-title" style="margin-bottom: 10px;">Quick Toggles</div>
+    <div class="controls-grid">
+      <button class="ctrl-btn" id="btnLight" onclick="toggleHeadlight()">
+        <span class="ctrl-icon">💡</span>
+        <span id="lblLight">Light</span>
+      </button>
+      <button class="ctrl-btn" id="btnLock" onclick="toggleLock()">
+        <span class="ctrl-icon">🔒</span>
+        <span id="lblLock">Lock</span>
+      </button>
+      <button class="ctrl-btn" id="btnCruise" onclick="toggleCruise()">
+        <span class="ctrl-icon">⚡</span>
+        <span id="lblCruise">Cruise</span>
+      </button>
+      <button class="ctrl-btn" id="btnGear" onclick="cycleGear()">
+        <span class="ctrl-icon">⚙️</span>
+        <span id="lblGear">Gear 3</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Additional Speed Presets -->
+  <div class="card custom-section">
+    <div class="section-title">
+      <span>Other Speeds</span>
+      <span style="font-size: 11px; cursor: pointer; color: var(--accent-cyan);" onclick="promptCustomSpeed()">Set Custom...</span>
+    </div>
+    <div class="presets-row">
+      <button class="preset-pill" onclick="applySpeedSetting(15)">15</button>
+      <button class="preset-pill" onclick="applySpeedSetting(20)">20</button>
+      <button class="preset-pill" onclick="applySpeedSetting(25)">25</button>
+      <button class="preset-pill" onclick="applySpeedSetting(32)">32</button>
+      <button class="preset-pill" onclick="applySpeedSetting(40)">40</button>
+      <button class="preset-pill" onclick="applySpeedSetting(47)">47</button>
+      <button class="preset-pill" onclick="applySpeedSetting(60)">60</button>
+    </div>
+  </div>
+
+  <!-- Packet Diagnostic Log -->
+  <div class="card log-container">
+    <div class="section-title">
+      <span>Bluetooth Traffic Log</span>
+      <span style="font-size: 11px; cursor: pointer; color: var(--text-muted);" onclick="clearLog()">Clear</span>
+    </div>
+    <div class="log-box" id="logBox">
+      <div class="log-entry">Volpam QuickSwitch ready.</div>
+      <div class="log-entry">Tap "Connect Scooter" to search for MK-083.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast element -->
+<div id="toast">
+  <span id="toastIcon">🚀</span>
+  <span id="toastMsg">Speed limit updated!</span>
+</div>
+
+<script>
+/**
+ * Reverse-engineered ViCont BLE Protocol implementation for Volpam MK-083 / PRO-VC
+ * 
+ * Frame Format:
+ * Outgoing: FA AF A5 | ZT | CODE | LEN | DATA[LEN] | CHECKSUM
+ * Incoming:        ZT | CODE | LEN | DATA[LEN] | CHECKSUM
+ * 
+ * Target Services & Characteristics:
+ * Primary:   Service 0xfee0 (0000fee0-0000-1000-8000-00805f9b34fb)
+ *            Char    0xfee2 (0000fee2-0000-1000-8000-00805f9b34fb)
+ * Secondary: Service 0xfff0 (0000fff0-0000-1000-8000-00805f9b34fb)
+ *            Char    0xfff1 (0000fff1-0000-1000-8000-00805f9b34fb)
+ */
+
+// Protocol Constants
+const MAGIC = [0xFA, 0xAF, 0xA5];
+const SERVICE_FEE0 = "0000fee0-0000-1000-8000-00805f9b34fb";
+const CHAR_FEE2    = "0000fee2-0000-1000-8000-00805f9b34fb";
+const SERVICE_FFF0 = "0000fff0-0000-1000-8000-00805f9b34fb";
+const CHAR_FFF1    = "0000fff1-0000-1000-8000-00805f9b34fb";
+
+// Opcodes
+const CODE_TELEMETRY_MOTOR  = 16;  // 0x10
+const CODE_TELEMETRY_STATUS = 17;  // 0x11
+const CODE_TELEMETRY_VER    = 18;  // 0x12
+const CODE_LOCK_TOGGLE      = 51;  // 0x33: 1=unlock, 2=lock
+const CODE_FIND_ME          = 52;  // 0x34
+const CODE_STARTUP_MODE     = 53;  // 0x35: kick vs zero
+const CODE_CRUISE           = 54;  // 0x36: 1=off, 2=on
+const CODE_SET_MAX_SPEED    = 60;  // 0x3C: speed limit
+const CODE_SET_GEAR         = 66;  // 0x42: 1, 2, 3
+const CODE_HEADLIGHT        = 69;  // 0x45: 1=off, 2=on
+const CODE_PARAM_WRITE      = 210; // 0xD2: [param_index, value] (index 9 is P10 Sport Limit)
+
+// Application State
+let bluetoothDevice = null;
+let gattServer = null;
+let activeChar = null;
+let currentZT = 0x5A; // default sync byte
+let isConnected = false;
+let isDemoMode = false;
+let writeQueue = Promise.resolve();
+
+// Scooter Live State
+let scooterState = {
+  speed: 0.0,
+  battery: null,
+  voltage: null,
+  temp: null,
+  currentLimit: null,
+  gear: 3,
+  headlight: false,
+  locked: false,
+  cruise: false,
+  startupMode: false,
+  hwVer: null,
+  swVer: null
+};
+
+// UI Elements
+const statusBadge = document.getElementById('statusBadge');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const btnConnect = document.getElementById('btnConnect');
+const connectIcon = document.getElementById('connectIcon');
+const connectLabel = document.getElementById('connectLabel');
+const infoDeviceName = document.getElementById('infoDeviceName');
+const infoActiveLimit = document.getElementById('infoActiveLimit');
+const valSpeed = document.getElementById('valSpeed');
+const valBattery = document.getElementById('valBattery');
+const valVoltage = document.getElementById('valVoltage');
+const valTemp = document.getElementById('valTemp');
+const btnLight = document.getElementById('btnLight');
+const btnLock = document.getElementById('btnLock');
+const btnCruise = document.getElementById('btnCruise');
+const btnGear = document.getElementById('btnGear');
+const lblGear = document.getElementById('lblGear');
+const firmwareLabel = document.getElementById('firmwareLabel');
+const logBox = document.getElementById('logBox');
+const toastEl = document.getElementById('toast');
+const toastMsg = document.getElementById('toastMsg');
+const toastIcon = document.getElementById('toastIcon');
+
+// Helper: Hex string representation
+function toHex(buffer) {
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+}
+
+// Log utility
+function log(msg, cls = '') {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + cls;
+  const time = new Date().toLocaleTimeString().split(' ')[0];
+  entry.textContent = `[${time}] ${msg}`;
+  logBox.appendChild(entry);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+function clearLog() {
+  logBox.innerHTML = '';
+}
+
+// Toast notification
+function showToast(text, icon = '⚡') {
+  toastMsg.textContent = text;
+  toastIcon.textContent = icon;
+  toastEl.classList.add('show');
+  if (navigator.vibrate) navigator.vibrate(50);
+  setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+// Checksum calculation: sum(ZT + code + len + data) & 0xFF
+function calculateChecksum(zt, code, data) {
+  let sum = (zt & 0xFF) + (code & 0xFF) + data.length;
+  for (let b of data) sum += (b & 0xFF);
+  return sum & 0xFF;
+}
+
+// Frame builder: FA AF A5 | ZT | CODE | LEN | DATA | CHECKSUM
+function buildCommand(code, data = []) {
+  const zt = currentZT & 0xFF;
+  const len = data.length & 0xFF;
+  const checksum = calculateChecksum(zt, code, data);
+  const frame = [...MAGIC, zt, code & 0xFF, len, ...data.map(d => d & 0xFF), checksum];
+  return new Uint8Array(frame);
+}
+
+// Enqueue write to prevent GATT congestion
+function enqueueCommand(code, data = [], label = '') {
+  const packet = buildCommand(code, data);
+  writeQueue = writeQueue.then(async () => {
+    if (isDemoMode) {
+      log(`TX (Demo): ${toHex(packet)} [${label}]`, 'log-tx');
+      simulateResponse(code, data);
+      await new Promise(r => setTimeout(r, 60));
+      return;
+    }
+
+    if (!activeChar) throw new Error("Not connected to scooter");
+
+    try {
+      if (activeChar.writeValueWithoutResponse) {
+        await activeChar.writeValueWithoutResponse(packet);
+      } else {
+        await activeChar.writeValue(packet);
+      }
+      log(`TX: ${toHex(packet)} [${label}]`, 'log-tx');
+    } catch (err) {
+      // Retry with writeValue fallback
+      await activeChar.writeValue(packet);
+      log(`TX (fallback): ${toHex(packet)} [${label}]`, 'log-tx');
+    }
+    await new Promise(r => setTimeout(r, 80)); // 80ms safe delay
+  }).catch(err => {
+    log(`Write failed (${label}): ${err.message}`, 'log-err');
+  });
+
+  return writeQueue;
+}
+
+// Main Speed Limiter Handler (The Core Requirement)
+async function applySpeedSetting(kmh, type = 'custom') {
+  if (!isConnected && !isDemoMode) {
+    showToast("Please connect to scooter first!", "⚠️");
+    return;
+  }
+
+  log(`--- SETTING SPEED LIMIT TO ${kmh} KM/H ---`, 'log-ack');
+  
+  // Strategy: Send both 0x3C (standard speed register) AND 0xD2 (P10 EEPROM parameter)
+  // ViCont dashboards clamp 0x3C if above built-in limit; P10 directly writes the EEPROM!
+  
+  // 1. Send Command 60 (0x3C): Max Speed Setting
+  enqueueCommand(CODE_SET_MAX_SPEED, [kmh], `Set Max Speed -> ${kmh} km/h`);
+
+  // 2. Send Command 210 (0xD2): Parameter 9 (P10 = Gear 3 / Sport Limit)
+  // Index 9 is P10 in ViCont controllers
+  enqueueCommand(CODE_PARAM_WRITE, [9, kmh], `Write P10 (Sport EEPROM) -> ${kmh}`);
+
+  // 3. If unlimiting to high speed, ensure scooter is in top gear (Gear 3)
+  if (kmh > 25) {
+    enqueueCommand(CODE_SET_GEAR, [3], "Switch to Gear 3 (Sport)");
+  }
+
+  // 4. Query back to confirm
+  enqueueCommand(CODE_SET_MAX_SPEED, [0], "Query Active Limit");
+
+  scooterState.currentLimit = kmh;
+  infoActiveLimit.textContent = `${kmh} km/h`;
+
+  if (type === 'unlimit') {
+    showToast(`UNLIMITED TO ${kmh} KM/H! 🚀`, '⚡');
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+  } else if (type === 'limit') {
+    showToast(`LIMITED TO ${kmh} KM/H (Street Legal) 🛡️`, '🛡️');
+    if (navigator.vibrate) navigator.vibrate(80);
+  } else {
+    showToast(`Speed set to ${kmh} km/h`, '⚙️');
+  }
+}
+
+// Web Bluetooth Connection
+async function handleConnectClick() {
+  if (isConnected) {
+    disconnectScooter();
+    return;
+  }
+
+  if (isDemoMode) {
+    toggleDemoMode(); // Turn off demo before real connect
+  }
+
+  if (!navigator.bluetooth) {
+    alert("Web Bluetooth is not supported in this browser.\n\n• On Android: Open in Google Chrome\n• On iOS (iPhone): Open in Bluefy or WebBLE browser\n• On PC/Mac: Open in Chrome or Edge.");
+    return;
+  }
+
+  try {
+    updateStatus("connecting", "Searching...");
+    log("Scanning for Bluetooth devices...", "log-warn");
+
+    // Request Bluetooth device
+    bluetoothDevice = await navigator.bluetooth.requestDevice({
+      filters: [
+        { namePrefix: 'MK' },
+        { namePrefix: 'PRO' },
+        { namePrefix: 'vc' },
+        { namePrefix: 'VC' },
+        { namePrefix: 'E-S' },
+        { namePrefix: 'SN' },
+        { namePrefix: 'ZL' }
+      ],
+      optionalServices: [SERVICE_FEE0, SERVICE_FFF0]
+    }).catch(async (err) => {
+      // Fallback: If filtered scan is canceled or device uses custom name, accept all
+      log("Filter scan bypassed, opening all devices chooser...", "log-warn");
+      return await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [SERVICE_FEE0, SERVICE_FFF0]
+      });
+    });
+
+    log(`Selected: ${bluetoothDevice.name || 'Unnamed'} (${bluetoothDevice.id})`);
+    bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+    updateStatus("connecting", "Pairing GATT...");
+    gattServer = await bluetoothDevice.gatt.connect();
+
+    // Find ViCont service: Try FEE0 first, then FFF0
+    let service = null;
+    let charUuid = CHAR_FEE2;
+
+    try {
+      service = await gattServer.getPrimaryService(SERVICE_FEE0);
+      activeChar = await service.getCharacteristic(CHAR_FEE2);
+      log("Connected to primary ViCont service (FEE0 / FEE2)", "log-ack");
+    } catch (e) {
+      log("FEE0 not found, trying secondary service FFF0...", "log-warn");
+      service = await gattServer.getPrimaryService(SERVICE_FFF0);
+      activeChar = await service.getCharacteristic(CHAR_FFF1);
+      log("Connected to secondary ViCont service (FFF0 / FFF1)", "log-ack");
+    }
+
+    // Enable Notifications
+    await activeChar.startNotifications();
+    activeChar.addEventListener('characteristicvaluechanged', handleNotification);
+    log("Subscribed to telemetry notifications.", "log-ack");
+
+    // Handshake sequence (Confirmed from original Vincet app disassembly)
+    // 1s after notify, send handshake frames 5A01005B and FA01005B
+    updateStatus("connected", "Connected");
+    isConnected = true;
+    infoDeviceName.textContent = bluetoothDevice.name || "MK-083";
+    btnConnect.classList.add('connected');
+    connectLabel.textContent = "Disconnect";
+    connectIcon.textContent = "🔌";
+
+    showToast("Scooter Connected!", "✅");
+
+    // Send Handshakes
+    setTimeout(() => {
+      // Raw Handshake frame 1: FA AF A5 5A 01 00 5B
+      const hs1 = new Uint8Array([0xFA, 0xAF, 0xA5, 0x5A, 0x01, 0x00, 0x5B]);
+      sendRawDirect(hs1, "Handshake #1");
+
+      setTimeout(() => {
+        // Raw Handshake frame 2: FA AF A5 FA 01 00 5B
+        const hs2 = new Uint8Array([0xFA, 0xAF, 0xA5, 0xFA, 0x01, 0x00, 0x5B]);
+        sendRawDirect(hs2, "Handshake #2");
+
+        // Query current speed limit
+        setTimeout(() => {
+          enqueueCommand(CODE_SET_MAX_SPEED, [0], "Query Active Speed Limit");
+        }, 300);
+      }, 200);
+    }, 400);
+
+  } catch (err) {
+    console.error(err);
+    log(`Connection failed: ${err.message}`, 'log-err');
+    disconnectScooter();
+  }
+}
+
+async function sendRawDirect(bytes, label = "") {
+  try {
+    if (activeChar.writeValueWithoutResponse) {
+      await activeChar.writeValueWithoutResponse(bytes);
+    } else {
+      await activeChar.writeValue(bytes);
+    }
+    log(`TX: ${toHex(bytes)} [${label}]`, 'log-tx');
+  } catch(e) {
+    log(`Raw write err: ${e.message}`, 'log-err');
+  }
+}
+
+// Disconnect
+function disconnectScooter() {
+  if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+    bluetoothDevice.gatt.disconnect();
+  }
+  onDisconnected();
+}
+
+function onDisconnected() {
+  isConnected = false;
+  activeChar = null;
+  updateStatus("offline", "Offline");
+  btnConnect.classList.remove('connected');
+  connectLabel.textContent = "Connect Scooter";
+  connectIcon.textContent = "🔗";
+  infoDeviceName.textContent = "Not connected";
+  log("Scooter disconnected.", "log-warn");
+}
+
+function updateStatus(state, text) {
+  statusDot.className = 'status-dot ' + (state === 'connected' ? 'connected' : (state === 'connecting' ? 'connecting' : ''));
+  statusText.textContent = text;
+}
+
+// Notification Incoming Decoder
+function handleNotification(event) {
+  const value = event.target.value;
+  const raw = new Uint8Array(value.buffer);
+  if (raw.length < 4) return;
+
+  // Frame format: ZT | CODE | LEN | DATA... | CHECKSUM
+  const zt = raw[0];
+  const code = raw[1];
+  const len = raw[2];
+  
+  if (raw.length < 3 + len + 1) return;
+  const data = raw.slice(3, 3 + len);
+  const receivedChecksum = raw[3 + len];
+
+  // Verify checksum
+  let sum = zt + code + len;
+  for (let b of data) sum += b;
+  if ((sum & 0xFF) !== receivedChecksum) {
+    // Checksum mismatch, ignore corrupted packet
+    return;
+  }
+
+  // Always keep ZT updated for the next command!
+  currentZT = zt;
+
+  // Process incoming telemetry codes
+  switch (code) {
+    case CODE_TELEMETRY_MOTOR: // 16 (0x10) - Live Motor & Battery
+      if (data.length >= 10) {
+        const voltageRaw = (data[0] << 8) | data[1];
+        const voltage = (voltageRaw * 0.01).toFixed(1);
+        const speedRaw = (data[4] << 8) | data[5];
+        const speed = (speedRaw * 0.1).toFixed(1);
+        const battery = data[6];
+        const controllerTemp = data[7];
+        const motorTemp = data[8];
+
+        scooterState.speed = speed;
+        scooterState.voltage = voltage;
+        scooterState.battery = battery;
+        scooterState.temp = motorTemp;
+
+        valSpeed.innerHTML = `${speed} <small>km/h</small>`;
+        valBattery.innerHTML = `${battery} <small>%</small>`;
+        valVoltage.innerHTML = `${voltage} <small>V</small>`;
+        valTemp.innerHTML = `${motorTemp} <small>°C</small>`;
+      }
+      break;
+
+    case CODE_TELEMETRY_STATUS: // 17 (0x11) - Status flags & gear
+      if (data.length >= 3) {
+        const flags0 = data[0];
+        const flags2 = data[2];
+
+        // flags0: bit 0..2 gear, bit 3 headlight, bit 6 cruise
+        const gear = flags0 & 0x07;
+        const headlight = ((flags0 >> 3) & 0x01) === 1;
+        const cruise = ((flags0 >> 6) & 0x01) === 1;
+
+        // flags2: bit 1 locked
+        const locked = ((flags2 >> 1) & 0x01) === 1;
+
+        scooterState.gear = gear || 3;
+        scooterState.headlight = headlight;
+        scooterState.cruise = cruise;
+        scooterState.locked = locked;
+
+        lblGear.textContent = `Gear ${scooterState.gear}`;
+        btnLight.classList.toggle('active', headlight);
+        btnCruise.classList.toggle('active', cruise);
+        btnLock.classList.toggle('locked', locked);
+        btnLock.querySelector('.ctrl-icon').textContent = locked ? '🔒' : '🔓';
+      }
+      break;
+
+    case CODE_TELEMETRY_VER: // 18 (0x12) - Hardware/Software Versions
+      if (data.length >= 4) {
+        const dashHw = data[0];
+        const dashSw = data[1];
+        const ctrlHw = data[2];
+        const ctrlSw = data[3];
+        firmwareLabel.textContent = `D:${dashHw}.${dashSw} / C:${ctrlHw}.${ctrlSw}`;
+      }
+      break;
+
+    case CODE_SET_MAX_SPEED: // 60 (0x3C) - Speed Limit Ack / Query Reply
+      if (data.length >= 1) {
+        const confirmedLimit = data[0];
+        scooterState.currentLimit = confirmedLimit;
+        infoActiveLimit.textContent = `${confirmedLimit} km/h`;
+        log(`Scooter confirmed active speed limit: ${confirmedLimit} km/h`, 'log-ack');
+      }
+      break;
+
+    case CODE_PARAM_WRITE: // 210 (0xD2) - Engineering Parameter Ack
+      log(`EEPROM parameter written successfully.`, 'log-ack');
+      break;
+  }
+}
+
+// Quick Toggles
+function toggleHeadlight() {
+  if (!isConnected && !isDemoMode) return showToast("Connect scooter first!", "⚠️");
+  const next = !scooterState.headlight;
+  // Stock app convention: sends 1 to turn OFF, 2 to turn ON
+  const val = next ? 2 : 1;
+  enqueueCommand(CODE_HEADLIGHT, [val], `Headlight ${next ? 'ON' : 'OFF'}`);
+  scooterState.headlight = next;
+  btnLight.classList.toggle('active', next);
+  showToast(`Headlight ${next ? 'ON' : 'OFF'}`, '💡');
+}
+
+function toggleLock() {
+  if (!isConnected && !isDemoMode) return showToast("Connect scooter first!", "⚠️");
+  const next = !scooterState.locked;
+  // 1 = unlock, 2 = lock
+  const val = next ? 2 : 1;
+  enqueueCommand(CODE_LOCK_TOGGLE, [val], next ? "Lock Scooter" : "Unlock Scooter");
+  scooterState.locked = next;
+  btnLock.classList.toggle('locked', next);
+  btnLock.querySelector('.ctrl-icon').textContent = next ? '🔒' : '🔓';
+  showToast(next ? "Scooter LOCKED" : "Scooter UNLOCKED", next ? '🔒' : '🔓');
+}
+
+function toggleCruise() {
+  if (!isConnected && !isDemoMode) return showToast("Connect scooter first!", "⚠️");
+  const next = !scooterState.cruise;
+  const val = next ? 2 : 1;
+  enqueueCommand(CODE_CRUISE, [val], `Cruise Control ${next ? 'ON' : 'OFF'}`);
+  scooterState.cruise = next;
+  btnCruise.classList.toggle('active', next);
+  showToast(`Cruise Control ${next ? 'ON' : 'OFF'}`, '⚡');
+}
+
+function cycleGear() {
+  if (!isConnected && !isDemoMode) return showToast("Connect scooter first!", "⚠️");
+  let nextGear = (scooterState.gear % 3) + 1;
+  enqueueCommand(CODE_SET_GEAR, [nextGear], `Set Gear -> ${nextGear}`);
+  scooterState.gear = nextGear;
+  lblGear.textContent = `Gear ${nextGear}`;
+  showToast(`Switched to Gear ${nextGear}`, '⚙️');
+}
+
+function promptCustomSpeed() {
+  const current = scooterState.currentLimit || 25;
+  const val = prompt("Enter custom speed limit in km/h (e.g. 20, 25, 35, 47, 60):", current);
+  if (val) {
+    const num = parseInt(val.trim(), 10);
+    if (!isNaN(num) && num >= 5 && num <= 99) {
+      applySpeedSetting(num, 'custom');
+    } else {
+      alert("Please enter a valid speed between 5 and 99 km/h.");
+    }
+  }
+}
+
+// Simulated Demo Mode (For offline testing)
+function toggleDemoMode() {
+  isDemoMode = !isDemoMode;
+  const btn = document.getElementById('demoToggleBtn');
+  const banner = document.getElementById('demoBanner');
+
+  if (isDemoMode) {
+    btn.textContent = "Disable Demo";
+    banner.style.background = "rgba(16, 185, 129, 0.15)";
+    banner.style.borderColor = "#10b981";
+    banner.querySelector('span').innerHTML = "🟢 <strong>Demo Mode Active:</strong> Simulating MK-083 scooter telemetry!";
+    updateStatus("connected", "Demo Connected");
+    infoDeviceName.textContent = "MK-083 (Simulated)";
+    infoActiveLimit.textContent = "47 km/h";
+    valSpeed.innerHTML = `21.4 <small>km/h</small>`;
+    valBattery.innerHTML = `88 <small>%</small>`;
+    valVoltage.innerHTML = `38.2 <small>V</small>`;
+    valTemp.innerHTML = `32 <small>°C</small>`;
+    firmwareLabel.textContent = "D:3.18 / C:2.27";
+    log("Demo simulation initialized. Commands will generate virtual responses.", "log-ack");
+    showToast("Demo Mode ON", "💡");
+  } else {
+    btn.textContent = "Enable Demo";
+    banner.style.background = "";
+    banner.style.borderColor = "";
+    banner.querySelector('span').innerHTML = "💡 <strong>Demo Mode:</strong> Test buttons & packets without scooter";
+    updateStatus("offline", "Offline");
+    infoDeviceName.textContent = "Not connected";
+    infoActiveLimit.textContent = "— km/h";
+    valSpeed.innerHTML = `0.0 <small>km/h</small>`;
+    valBattery.innerHTML = `-- <small>%</small>`;
+    valVoltage.innerHTML = `--.- <small>V</small>`;
+    valTemp.innerHTML = `-- <small>°C</small>`;
+    firmwareLabel.textContent = "FW: —";
+    log("Demo mode deactivated.", "log-warn");
+  }
+}
+
+function simulateResponse(code, data) {
+  setTimeout(() => {
+    if (code === CODE_SET_MAX_SPEED) {
+      const spd = data[0] || 47;
+      log(`RX (Demo): 5A 3C 01 ${spd.toString(16).padStart(2,'0').toUpperCase()} ...`, 'log-rx');
+      log(`Demo scooter confirmed speed limit = ${spd} km/h`, 'log-ack');
+      infoActiveLimit.textContent = `${spd} km/h`;
+    } else if (code === CODE_PARAM_WRITE) {
+      log(`RX (Demo): 5A D2 01 00 ... [EEPROM P10 Saved]`, 'log-rx');
+    }
+  }, 100);
+}
+</script>
+
+
+<style>
+#pwaInstallBar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;padding:14px 16px;
+background:rgba(13,17,23,.92);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.1);
+flex-direction:column;gap:10px;align-items:center}
+#pwaInstallBar.show{display:flex}
+#pwaInstallBtn{border:none;border-radius:14px;padding:14px 28px;width:100%;max-width:420px;
+font-size:16px;font-weight:800;color:#fff;cursor:pointer;
+background:linear-gradient(135deg,#2563eb,#1d4ed8);box-shadow:0 6px 20px rgba(37,99,235,.45)}
+#pwaInstallHint{font-size:12px;color:#8b949e;text-align:center;line-height:1.5}
+</style>
+<script>
+(function () {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
+  var bar = document.createElement('div');
+  bar.id = 'pwaInstallBar';
+  var ua = navigator.userAgent;
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var btOK = 'bluetooth' in navigator;
+  if (isIOS || !btOK) {
+    bar.innerHTML = '<div style="padding:4px 18px;font-size:13px;text-align:center;color:#fca5a5;font-weight:600">'
+      + (isIOS ? 'Bluetooth is not supported on iPhone/iPad \u2014 open this page in Chrome on an Android phone.'
+               : 'This browser does not support Web Bluetooth. Open it in Chrome on Android (or desktop Chrome/Edge).')
+      + '</div>';
+    document.body.appendChild(bar); bar.classList.add('show');
+    return;
+  }
+  var deferred = null;
+  bar.innerHTML =
+    '<button id="pwaInstallBtn">\u2B07\uFE0F\u00A0 Install app on this phone</button>'
+    + '<div id="pwaInstallHint">No popup? Tap the Chrome menu (\u22EE) and choose \u201CInstall app\u201D.</div>';
+  document.body.appendChild(bar);
+  bar.classList.add('show');
+  bar.querySelector('#pwaInstallBtn').addEventListener('click', function () {
+    if (deferred) { deferred.prompt(); deferred.userChoice.then(function () { deferred = null; }); }
+    else { alert('Tap the Chrome menu (\u22EE) at the top right, then choose \u201CInstall app\u201D.'); }
+  });
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; bar.classList.add('show'); });
+  window.addEventListener('appinstalled', function () {
+    bar.innerHTML = '<div style="padding:10px 18px;font-size:14px;text-align:center;color:#34d399;font-weight:700">\u2714 Installed! Check your home screen.</div>';
+    setTimeout(function(){ bar.classList.remove('show'); }, 4000);
+  });
+})();
+</script>
+
+</body>
+</html>
